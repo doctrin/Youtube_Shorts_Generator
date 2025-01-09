@@ -1,11 +1,15 @@
 from Components.YoutubeDownloader import download_youtube_video
+from Components.YoutubeDownloader import download_video
 from Components.Edit import extractAudio, crop_video
 from Components.Transcription import transcribeAudio
 from Components.LanguageTasks import GetHighlight
 from Components.FaceCrop import crop_to_vertical, combine_videos
 
 url = input("Enter YouTube video URL: ")
-Vid= download_youtube_video(url)
+
+Vid = download_youtube_video(url)
+#Vid = download_video(url)
+
 if Vid:
     Vid = Vid.replace(".webm", ".mp4")
     print(f"Downloaded video and audio files successfully! at {Vid}")
