@@ -1,7 +1,7 @@
-THIS IS NOT MY OWN PROJECT.
-IT IS JUST FOR STUDY ABOUNT PYTHON AND YOUTUBE.
+# THIS IS NOT MY OWN PROJECT.
+# IT IS JUST FOR STUDY ABOUNT PYTHON AND YOUTUBE.
 
-THE ORIGINAL PROJECT IS HERE : https://github.com/SamurAIGPT/AI-Youtube-Shorts-Generator
+# THE ORIGINAL PROJECT IS HERE : https://github.com/SamurAIGPT/AI-Youtube-Shorts-Generator
 
 
 # AI Youtube Shorts Generator
