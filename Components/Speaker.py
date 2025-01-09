@@ -6,6 +6,9 @@ import contextlib
 from pydub import AudioSegment
 import os
 
+# FFmpeg 경로를 환경 변수에서 로드하거나 기본 경로 설정
+AudioSegment.converter = os.getenv("FFMPEG_PATH", r"C:\\Users\\doctr\\PycharmProjects\\Util\\ffmpeg-2025-01-05-git-19c95ecbff-full_build\\bin\\ffmpeg.exe")
+
 # Update paths to the model files
 prototxt_path = "models/deploy.prototxt"
 model_path = "models/res10_300x300_ssd_iter_140000_fp16.caffemodel"
@@ -33,11 +36,32 @@ def process_audio_frame(audio_data, sample_rate=16000, frame_duration_ms=30):
         offset += n
         yield frame
 
+def process_detection(detections, frame, w, h, MaxDif, is_speaking_audio):
+    """ 얼굴 감지 및 스피커 활성 상태 표시 처리 """
+    Add = []
+    for i in range(detections.shape[2]):
+        confidence = detections[0, 0, i, 2]
+        if confidence > 0.3:  # Confidence threshold
+            box = detections[0, 0, i, 3:7] * np.array([w, h, w, h])
+            (x, y, x1, y1) = box.astype("int")
+            face_width = x1 - x
+            face_height = y1 - y
+
+            # Draw bounding box
+            cv2.rectangle(frame, (x, y), (x1, y1), (0, 255, 0), 2)
+
+            # Assuming lips are approximately at the bottom third of the face
+            lip_distance = abs((y + 2 * face_height // 3) - (y1))
+            Add.append([[x, y, x1, y1], lip_distance])
+
+            if lip_distance >= MaxDif and is_speaking_audio:
+                cv2.putText(frame, "Active Speaker", (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+    return Add
+
 global Frames
-Frames = [] # [x,y,w,h]
+Frames = []  # [x,y,w,h]
 
 def detect_faces_and_speakers(input_video_path, output_video_path):
-    # Return Frams:
     global Frames
     # Extract audio from the video
     extract_audio_from_video(input_video_path, temp_audio_path)
@@ -69,61 +93,50 @@ def detect_faces_and_speakers(input_video_path, output_video_path):
             break
         is_speaking_audio = voice_activity_detection(audio_frame, sample_rate)
         MaxDif = 0
-        Add = []
-        for i in range(detections.shape[2]):
-            confidence = detections[0, 0, i, 2]
-            if confidence > 0.3:  # Confidence threshold
-                box = detections[0, 0, i, 3:7] * np.array([w, h, w, h])
-                (x, y, x1, y1) = box.astype("int")
-                face_width = x1 - x
-                face_height = y1 - y
+        Add = process_detection(detections, frame, w, h, MaxDif, is_speaking_audio)
 
-                # Draw bounding box
-                cv2.rectangle(frame, (x, y), (x1, y1), (0, 255, 0), 2)
-
-                # Assuming lips are approximately at the bottom third of the face
-                lip_distance = abs((y + 2 * face_height // 3) - (y1))
-                Add.append([[x, y, x1, y1], lip_distance])
-
-                MaxDif == max(lip_distance, MaxDif)
-        for i in range(detections.shape[2]):
-            confidence = detections[0, 0, i, 2]
-            if confidence > 0.3:  # Confidence threshold
-                box = detections[0, 0, i, 3:7] * np.array([w, h, w, h])
-                (x, y, x1, y1) = box.astype("int")
-                face_width = x1 - x
-                face_height = y1 - y
-
-                # Draw bounding box
-                cv2.rectangle(frame, (x, y), (x1, y1), (0, 255, 0), 2)
-
-                # Assuming lips are approximately at the bottom third of the face
-                lip_distance = abs((y + 2 * face_height // 3) - (y1))
-                print(lip_distance)
-
-                # Combine visual and audio cues
-                if lip_distance >= MaxDif and is_speaking_audio:  # Adjust the threshold as needed
-                    cv2.putText(frame, "Active Speaker", (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
-                if lip_distance >= MaxDif:
-                    break
-
-        Frames.append([x, y, x1, y1])
+        #Frames.append([x, y, x1, y1] for x, y, x1, y1, _ in Add)
+        Frames.extend(bounding_box for bounding_box, _ in Add)
 
         out.write(frame)
-        cv2.imshow('Frame', frame)
+        #cv2.imshow('Frame', frame)
 
-        if cv2.waitKey(1) & 0xFF == ord('q'):
-            break
+        #if cv2.waitKey(1) & 0xFF == ord('q'):
+        #    break
 
     cap.release()
     out.release()
-    cv2.destroyAllWindows()
+    #cv2.destroyAllWindows()
     os.remove(temp_audio_path)
 
 
+"""
+if __name__ == "__main__":
+    # Example usage
+    input_video_path = "path/to/input_video.mp4"
+    output_video_path = "path/to/output_video.mp4"
+    detect_faces_and_speakers(input_video_path, output_video_path)
+    print(Frames)
+    print(len(Frames))
+    print(Frames[:5])
+
+    # FFmpeg 권한 확인 테스트
+    print(f"FFmpeg path being used: {AudioSegment.converter}")
+
+    # 테스트용 비디오 파일 경로
+    test_video_path = "path/to/test_video.mp4"
+
+    try:
+        # FFmpeg를 사용하여 오디오를 추출
+        audio = AudioSegment.from_file(test_video_path)
+        print("FFmpeg successfully processed the file.")
+    except Exception as e:
+        print(f"Error with FFmpeg: {e}")
+"""
 
 if __name__ == "__main__":
     detect_faces_and_speakers()
+
     print(Frames)
     print(len(Frames))
     print(Frames[1:5])

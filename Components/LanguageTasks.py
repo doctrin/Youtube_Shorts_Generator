@@ -5,6 +5,12 @@ import json
 
 load_dotenv()
 
+api_key = os.getenv("OPENAI_API")
+if not api_key:
+    print("API key not found. Check your .env file.")
+else:
+    print(f"API key loaded: {api_key}")
+
 openai.api_key = os.getenv("OPENAI_API")
 
 if not openai.api_key:
@@ -56,29 +62,41 @@ Any Example
 def GetHighlight(Transcription):
     print("Getting Highlight from Transcription ")
     try:
-
+        # OpenAI API 호출
         response = openai.ChatCompletion.create(
-            model="gpt-4o-2024-05-13",
+            model="gpt-3.5-turbo",
             temperature=0.7,
             messages=[
                 {"role": "system", "content": system},
-                {"role": "user", "content": Transcription + system},
+                {"role": "user", "content": Transcription},
             ],
         )
 
-        json_string = response.choices[0].message.content
-        json_string = json_string.replace("json", "")
-        json_string = json_string.replace("```", "")
-        # print(json_string)
+        # 응답 디버깅
+        print(f"API Response: {response}")
+
+        # 응답 처리
+        if "choices" not in response or not response["choices"]:
+            raise ValueError("API response does not contain 'choices' or it is empty.")
+
+        # JSON 데이터 추출
+        json_string = response["choices"][0]["message"]["content"]
+        json_string = json_string.replace("json", "").replace("```", "")
         Start, End = extract_times(json_string)
+
+        # 결과 검증
         if Start == End:
-            Ask = input("Error - Get Highlights again (y/n) -> ").lower()
-            if Ask == "y":
-                Start, End = GetHighlight(Transcription)
+            print("Error: Start and End are the same. Re-requesting...")
+            return GetHighlight(Transcription)
+
         return Start, End
+    #except openai.error.OpenAIError as e:
+    #    print(f"OpenAI API Error: {e}")
+    #    return 0, 0
     except Exception as e:
         print(f"Error in GetHighlight: {e}")
         return 0, 0
+
 
 
 if __name__ == "__main__":
